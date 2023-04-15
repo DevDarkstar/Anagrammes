@@ -8,6 +8,7 @@
 (* Permet d'importer l'ensemble des prénoms présents dans un fichier.
     param: filename -> le nom du fichier
     return: une liste contenant l'ensemble des prénoms présents dans le fichier.
+
     signature: val get_first_names : string -> string list = <fun>
 *)
 let get_first_names filename = 
@@ -31,6 +32,7 @@ let get_first_names filename =
 (* Fonction permettant de compter le nombre d'occurrences de chaque lettre dans un mot.
     param: word -> mot à analyser
     return: un tableau de taille 26 (nombre de lettres de l'alphabet), associant à chaque lettre son nombre d'apparaition dans le mot.
+
     signature: val count_occurrences_letters : string -> int array = <fun> 
 *)
 let count_occurrences_letters word = 
@@ -45,7 +47,7 @@ let count_occurrences_letters word =
                -> A = 0, B = 1, .., Z = 25 *)
             | 'A' .. 'Z' -> 
             tab_occurrences.(Char.code char - Char.code 'A') <- tab_occurrences.(Char.code char - Char.code 'A') + 1;
-            count_occurrences_letters (i+1)
+            count_occurrences_letters (i + 1)
             (* On ignore tout autre type de caractère *)
             | _ -> count_occurrences_letters (i + 1)
         )
@@ -57,6 +59,7 @@ let count_occurrences_letters word =
 (* Fonction permettant de compter le nombre le nombre d'occurrences de chaque lettre pour chaque mot contenus dans une liste.
     param: l -> liste de chaine de caractères contenant les mots à analyser.
     return: un tableau de tableau du nombre d'apparition de chaque lettre dans chaque mot.
+
     signature: val count_occurrences : string list -> (string, int array) Hashtbl.t = <fun>
 *)
 let count_occurences l =
@@ -73,6 +76,7 @@ let count_occurences l =
     param: first_name -> tableau d'occurrences à tester.
     param: name -> tableau d'occurrences devant contenir l'ensemble des lettres de first_name.
     return true si name contient l'ensemble des lettres de first_name false sinon.
+
     signature: val compare_words : int array -> int array -> bool = <fun>
 *)
 let compare_words first_name name = 
@@ -96,6 +100,7 @@ let compare_words first_name name =
     Permet de transformer un tableau d'occurrences de caractères d'un mot en chaine de caractères.
     param: tab -> tableau d'occurrences de caractères à transformer
     return: une chaine de caractères obtenue à partir du tableau d'occurrences
+
     signature: val occurrences_table_to_string : int array -> string = <fun>
 *)
 
@@ -129,6 +134,7 @@ let occurrences_table_to_string tab =
     Permet de compter le nombre de voyelles dans un mot.
     param: word -> mot à analyser
     return: le nombre de voyelles présentes dans le mot
+
     signature: val count_vowels : string -> int = <fun>
 *)
 let count_vowels word =
@@ -143,35 +149,137 @@ let count_vowels word =
         )
         else acc
         in
-        count_vowels_aux 0 0;;  
+        count_vowels_aux 0 0;;
+
+(*
+   Permet d'indiquer si un mot est viable ou non. Un mot est viable, c'est-à-dire éligible pour l'analyse par la chaine de Markov
+   si le nombre de voyelles et le nombre de consonnes du mot sont équivalents à plus ou moins une différence près et si la taille 
+   du mot dépasse une longueur de 2.
+   param: word -> Le mot à analyser.
+   return: true si le mot est viable false sinon.
+
+   signature: val is_viable_word : string -> bool = <fun>
+*)                
+let is_viable_word word = 
+    let word_length = String.length word in
+    let number_vowels = count_vowels word in
+    let number_consonants = word_length - number_vowels in
+    if (number_vowels >= number_consonants && number_vowels <= number_consonants + 1) && word_length > 2 then true
+    else false;;
    
+(*
+    Permet de déterminer les prénoms qui peuvent être des candidats idéaux pour former des anagrammes d'un nom donné
+    par l'utilisateur. Un candidat idéal est un prénom dont toutes ses lettres sont contenues dans le nom de l'utilisateur
+    et dont les lettres restantes (présentes dans le nom de l'utilisateur mais pas dans le prénom) peuvent former un nom de famille
+    probable.
+    param: h -> table de hashage contenant pour chaque duo clé/valeur un prénom de la base de données du programme
+    comme clé et son tableau d'occurrences comme valeur.
+    param: name -> nom entré par l'utilisateur à comparer avec l'ensemble de la banque de prénoms
+    return: une table de hashage contenant pour chaque couple clé/valeur un prénom retenu pour l'étape suivante en tant que clé 
+    et les lettres restantes du nom entré par l'utilisateur non utilisées par le prénom en tant que valeur. 
     
+    signature: val find_first_names : (string, int array) Hashtbl.t -> string -> (string, string) Hashtbl.t = <fun>
+*)   
 let find_first_names h name = 
-    let htle_size = Hashtbl.length h in
-    let res = Hashtbl.create htle_size in
+    let hashtable_size = Hashtbl.length h in
+    let res = Hashtbl.create hashtable_size in
+    (* On itère sur la liste des prénoms *)
     Hashtbl.iter (fun key value -> 
-        if compare_words value name then(
-            Hashtbl.add res key (occurrences_table_to_string name)
-        )) h;
+        let temp_name = Array.copy name in
+        (* On regarde si peut former le prénom dont le tableau d'occurrences est contenu dans value avec les lettres contenues dans
+           le tableau d'occurrences de name. *)
+        if compare_words value temp_name then(
+            (* Si oui, le prénom est un candidat potentiel pour le suite de l'algorithme.
+               On récupère les lettres du nom name non utilisées par le prénom *)
+            let remaining_letters = occurrences_table_to_string temp_name in
+            (* et on regarde si les lettres restantes peuvent former un nom viable *)
+            if is_viable_word remaining_letters then Hashtbl.add res key remaining_letters
+        )
+    ) h;
     res;;
+(*
+    Permet de créer une chaine de Markov contenant l'ensemble des occurrences de deux lettres successives
+    param: value -> valeur d'initialisation de chaque clé de la chaine de Markov
+    return: une chaine de Markov sous la forme d'une table de hashage où chaque clé (deux lettres successives) est associée à la valeur 'value'
+
+    signature: val create_markov_chain : int -> (string, int) Hashtbl.t = <fun>
+*)
+let create_markov_chain value =
+    let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" in
+    let alphabet_length = String.length alphabet in
+    let markov_chain = Hashtbl.create (alphabet_length * alphabet_length) in
+    let rec create_markov_chain_aux_one i = 
+        if i < alphabet_length then(
+            let rec create_markov_chain_aux_two j = 
+                if j < alphabet_length then(
+                let key = (Char.escaped alphabet.[i]) ^ (Char.escaped alphabet.[j]) in
+                Hashtbl.add markov_chain key value;
+                create_markov_chain_aux_two (j + 1)
+                )
+                in
+                create_markov_chain_aux_two 0;
+            create_markov_chain_aux_one (i + 1)
+        )
+        in 
+        create_markov_chain_aux_one 0;
+        markov_chain;;
+
+(*
+    Permet de remplir une chaine de Markov à partir d'une liste de données.
+    param: l -> liste des données utilisées pour remplir la chaine de Markov
+    return: la chaine de Markov remplie à partir des données contenues dans la liste 'l'
+
+    signature: val generate_markov_chain : string list -> (string, int) Hashtbl.t = <fun>
+*)
+        
+let generate_markov_chain l = 
+    let markov_chain = create_markov_chain 0 in
+    let rec generate_markov_chain_aux l = 
+        match l with
+        | [] -> markov_chain
+        | hd::tl -> (
+            let word_length = String.length hd in
+            let rec analyze_word i =
+                (*try*) 
+                if i < word_length - 1 then(
+                    let key = (Char.escaped hd.[i]) ^ (Char.escaped hd.[i + 1]) in
+                    let value = Hashtbl.find markov_chain key in
+                    Hashtbl.replace markov_chain key (value + 1);
+                    analyze_word (i + 1)
+                )
+                (*with Not_found -> Printf.printf "erreur %s\n" hd;*)
+                in
+                analyze_word 0;
+        generate_markov_chain_aux tl
+        )
+        in
+        generate_markov_chain_aux l;;
+
         
 
   
 
 (*let t1 = Unix.gettimeofday ();;*)
-let names = get_first_names "fichier.txt";;
+let names = get_first_names "banque_prenoms.txt";;
 let counts = count_occurences names;;
 (*Hashtbl.iter (fun key value -> Printf.printf "%s -> %d\n" key value.(3)) counts;;*)
-let nom = "RICHiARDINEtu";;
+let nom = "julien lepers";;
 let nombre = count_vowels nom;;
 let res = count_occurrences_letters nom;;
-let chaine = occurrences_table_to_string res;;
 let resultat = find_first_names counts res;;
 
 
 Hashtbl.iter (fun key value -> (
     Printf.printf "cle: %s -> valeur: %s\n" key value
  )) resultat;;
+
+ (*
+ let markov_chain = create_markov_chain 0;;
+ Hashtbl.iter (fun key value -> (Printf.printf "cle: %s -> valeur: %d ; " key value)) markov_chain;;
+ *)
+
+ let markov_chain = generate_markov_chain names;;
+ (* Hashtbl.iter (fun key value -> (Printf.printf "cle: %s -> valeur: %d\n" key value)) markov_chain;; *)
  
 (*let t2 = Unix.gettimeofday ();;
 let execution_time = t2 -. t1 in
