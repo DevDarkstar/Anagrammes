@@ -47,7 +47,7 @@ let count_occurrences_letters word =
             tab_occurrences.(Char.code char - Char.code 'A') <- tab_occurrences.(Char.code char - Char.code 'A') + 1;
             count_occurrences_letters (i+1)
             (* On ignore tout autre type de caractère *)
-            | _ -> count_occurrences_letters (i+1)
+            | _ -> count_occurrences_letters (i + 1)
         )
         else tab_occurrences
     in
@@ -84,22 +84,74 @@ let compare_words first_name name =
             if first_name.(i) <= name.(i) then (
                 (* On actualise le contenu de name en retirant dans name le nombre de lettres présentes dans first_name *)
                 name.(i) <- name.(i) - first_name.(i);
-                compare_words_aux (i+1)
+                compare_words_aux (i + 1)
             )
             else false
         )
         else true
     in
     compare_words_aux 0;;
-    
-    
+
+(*
+    Permet de transformer un tableau d'occurrences de caractères d'un mot en chaine de caractères.
+    param: tab -> tableau d'occurrences de caractères à transformer
+    return: une chaine de caractères obtenue à partir du tableau d'occurrences
+    signature: val occurrences_table_to_string : int array -> string = <fun>
+*)
+
+let occurrences_table_to_string tab =
+    let length = Array.length tab in
+    let rec occurrences_table_to_string_aux acc i = 
+        if i < length then(
+            (* A chaque indice du tableau tab, on récupère le nombre de lettres correspondantes *)
+            let number = tab.(i) in
+            let rec add_letters acc_aux j = 
+                if j < number then
+                    (* Pour un indice donné du tableau d'occurrences tab, on appelle récursivement la fonction
+                       add_letters en accumulant les lettres en fonction de leur nombre.
+                       Les indices du tableau d'occurences correspondant aux différentes lettres de l'alphabet, on y ajoute
+                       65 afin d'avoir le caractère idoine dans la table ascii. *)
+                    add_letters (acc_aux ^ (Char.escaped (Char.chr (i + 65)))) (j + 1)
+                (* Lorsqu'on n'a plus de caractères à ajouter, on retourne l'accumulateur de la fonction occurrences_table_to_string_aux
+                   contenant la concaténation de tous les accumulateurs des appels successifs de la fonction add_letters. *)
+                else acc_aux
+                in
+                (* L'appel récursif de occurrences_table_to_string_aux va permettre de construire la chaine de caractères 
+                   en utilisant un accumulateur qui va consister en la concaténation de l'ensemble des accumulateurs des appels
+                   récursifs de la fonction add_letters sur les indices i du tableau d'occurrences tab. *)
+                occurrences_table_to_string_aux (acc ^ (add_letters "" 0)) (i + 1)
+        )
+        else acc
+        in
+        occurrences_table_to_string_aux "" 0;;
+
+(*
+    Permet de compter le nombre de voyelles dans un mot.
+    param: word -> mot à analyser
+    return: le nombre de voyelles présentes dans le mot
+    signature: val count_vowels : string -> int = <fun>
+*)
+let count_vowels word =
+    let word_length = String.length word in
+    let rec count_vowels_aux acc i =
+        if i < word_length then(
+            match Char.uppercase_ascii (String.get word i) with
+            (* Si le caractère est une voyelle, alors on incrémente la valeur de l'accumulateur de la fonction *)
+            | 'A' | 'E' | 'I' | 'O' | 'U' | 'Y' -> count_vowels_aux (acc + 1) (i + 1)
+            (* On ignore tous les autres types de caractères *)
+            | _ -> count_vowels_aux acc (i + 1)
+        )
+        else acc
+        in
+        count_vowels_aux 0 0;;  
+   
     
 let find_first_names h name = 
     let htle_size = Hashtbl.length h in
     let res = Hashtbl.create htle_size in
     Hashtbl.iter (fun key value -> 
         if compare_words value name then(
-            Hashtbl.add res key name
+            Hashtbl.add res key (occurrences_table_to_string name)
         )) h;
     res;;
         
@@ -110,13 +162,17 @@ let find_first_names h name =
 let names = get_first_names "fichier.txt";;
 let counts = count_occurences names;;
 (*Hashtbl.iter (fun key value -> Printf.printf "%s -> %d\n" key value.(3)) counts;;*)
-let nom = "RICHARDINE";;
+let nom = "RICHiARDINEtu";;
+let nombre = count_vowels nom;;
 let res = count_occurrences_letters nom;;
+let chaine = occurrences_table_to_string res;;
 let resultat = find_first_names counts res;;
+
+
 Hashtbl.iter (fun key value -> (
-    Printf.printf "cle: %s -> [" key;
-    Array.iter (fun i -> Printf.printf "%d," i) value
+    Printf.printf "cle: %s -> valeur: %s\n" key value
  )) resultat;;
+ 
 (*let t2 = Unix.gettimeofday ();;
 let execution_time = t2 -. t1 in
 Printf.printf "Temps d'execution du programme: %.2f secondes\n" execution_time;;*)
