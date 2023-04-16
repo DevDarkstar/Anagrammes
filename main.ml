@@ -41,12 +41,12 @@ let count_occurrences_letters word =
     let rec count_occurrences_letters i = 
         if i < word_length then(
             (* On transforme chaque caractère de la chaine en majuscule de sorte à avoir une uniformité de la casse *)
-            let char = Char.uppercase_ascii word.[i] in
-            match char with
+            let c = Char.uppercase_ascii word.[i] in
+            match c with
             (* Dans le cas d'un caractère, on incrémente la valeur à l'indice correspondant à la position de la lettre dans l'alphabet - 1
                -> A = 0, B = 1, .., Z = 25 *)
             | 'A' .. 'Z' -> 
-            tab_occurrences.(Char.code char - Char.code 'A') <- tab_occurrences.(Char.code char - Char.code 'A') + 1;
+            tab_occurrences.(Char.code c - Char.code 'A') <- tab_occurrences.(Char.code c - Char.code 'A') + 1;
             count_occurrences_letters (i + 1)
             (* On ignore tout autre type de caractère *)
             | _ -> count_occurrences_letters (i + 1)
@@ -255,31 +255,90 @@ let generate_markov_chain l =
         in
         generate_markov_chain_aux l;;
 
+let generate_correct_names names markov_chain = 
+    let names_length = Hashtbl.length names in
+    let names_res = Hashtbl.create names_length in
+    Hashtbl.iter (fun key value -> (
+        let word_length = String.length value in
+        (* on sélectionne un indice aléatoire parmi les lettres du nom à former *)
+        let index = Random.int word_length in
+        (* On récupère le caractère associé à cet indice *)
+        let c = value.[index] in
+        (* On l'ajoute au début du nom que l'on souhaite former *)
+        let name = "" ^ (Char.escaped c) in
+        (* On retire cette lettre de la chaine des lettres restantes *)
+        let remaining_letters = (String.sub value 0 index) ^ (String.sub value (index + 1) (word_length - index - 1)) in
+        let rec create_name acc letters = 
+            Printf.printf "***Nouvelle boucle***\n";
+            Printf.printf "lettres restantes: %s\n" letters;
+            let letters_length = String.length letters in
+            if letters_length > 1 then(
+                (* On récupère la dernier lettre ajoutée à l'accumulateur *)
+                let last_letter = acc.[String.length acc - 1] in
+                let rec find_next_letter letter_index i max = 
+                    if i < letters_length then(
+                        (* on recrée la clé en concaténant deux lettres *)
+                        let key = (Char.escaped last_letter) ^ (Char.escaped letters.[i]) in
+                        Printf.printf "valeur de la cle: %s\n" key;
+                        let number_occurrences = Hashtbl.find markov_chain key in
+                        Printf.printf "Nombre d'occurrences de la cle %s : %d\n" key number_occurrences;
+                        if number_occurrences > max then(
+                            Printf.printf "vrai\n";
+                            find_next_letter i (i + 1) number_occurrences
+                        )
+                        else find_next_letter letter_index (i + 1) max
+                    )
+                    else letter_index
+                in
+                let next_letter_index = find_next_letter 0 0 0 in
+                Printf.printf "indice choisi : %d et lettre suivante choisie : %c\n" next_letter_index letters.[next_letter_index];
+                create_name (acc ^ (Char.escaped letters.[next_letter_index])) ((String.sub letters 0 next_letter_index) ^ (String.sub letters (next_letter_index + 1) (letters_length - next_letter_index - 1)))
+            )
+            else Hashtbl.add names_res key (acc ^ letters)
+        in
+        create_name name remaining_letters 
+
+    )) names;
+    names_res;;
+
         
 
-  
-
+(* Bloc d'exécution du programme *)
+let () =
 (*let t1 = Unix.gettimeofday ();;*)
-let names = get_first_names "banque_prenoms.txt";;
-let counts = count_occurences names;;
-(*Hashtbl.iter (fun key value -> Printf.printf "%s -> %d\n" key value.(3)) counts;;*)
-let nom = "julien lepers";;
-let nombre = count_vowels nom;;
-let res = count_occurrences_letters nom;;
-let resultat = find_first_names counts res;;
+    (* On récupère l'intégralité des prénoms situés dans la banque de prénoms *)
+    let names = get_first_names "banque_prenoms_reduite.txt" in
+    (* On ajoute à chaque prénom un tableau de taille 26 contenant, à chaque indice, le nombre d'apparition de la lettre du prénom *)
+    let counts = count_occurences names in
+    (* On crée le nom à partir duquel nous allons déterminer ses anagrammes *)
+    let nom = "nicolas coudert" in
+    (* On récupère le nombre de voyalles de ce nom *)
+    let nombre = count_vowels nom in
+    (* ainsi que le tableau du nombre d'apparition de chaque lettre dans ce même nom *)
+    let res = count_occurrences_letters nom in
+    (* On récupère tous les prénoms candidats à former des anagrammes viables ainsi que le reste des lettres non utilisées par ces dits prénoms. *)
+    (* retourne une table de hashage avec clé = "prénom", valeur = "reste des lettres du nom à partir duquel on détermine les anagrammes 
+       non présentes dans le prénom "*)
+    let resultat = find_first_names counts res in
 
+    (*
+    Hashtbl.iter (fun key value -> (
+        Printf.printf "cle: %s -> valeur: %s\n" key value
+    )) resultat;;
+    *)
 
-Hashtbl.iter (fun key value -> (
-    Printf.printf "cle: %s -> valeur: %s\n" key value
- )) resultat;;
+    (*
+    let markov_chain = create_markov_chain 0;;
+    Hashtbl.iter (fun key value -> (Printf.printf "cle: %s -> valeur: %d ; " key value)) markov_chain;;
+    *)
+    (* On récupère une chaine de Markov générée à partir de la banque de prénoms utilisée *)
+    let markov_chain = generate_markov_chain names in
 
- (*
- let markov_chain = create_markov_chain 0;;
- Hashtbl.iter (fun key value -> (Printf.printf "cle: %s -> valeur: %d ; " key value)) markov_chain;;
- *)
-
- let markov_chain = generate_markov_chain names;;
- (* Hashtbl.iter (fun key value -> (Printf.printf "cle: %s -> valeur: %d\n" key value)) markov_chain;; *)
+    (* On récupère enfin l'ensemble des anagrammes du nom choisi par l'utilisateur sous le forme de clé/valeur avec la clé
+       un prénom et la valeur un nom de famille plausible obtenue en réarangeant le reste des lettres non présentes dans le prénom *)
+    let correct_names = generate_correct_names resultat markov_chain in
+    Printf.printf "\n\nVoici une liste de noms qui sont anagrammes de %s (%d resultats) :\n" nom (Hashtbl.length correct_names);
+    Hashtbl.iter (fun key value -> Printf.printf "%s %s\n" key value) correct_names;;
  
 (*let t2 = Unix.gettimeofday ();;
 let execution_time = t2 -. t1 in
