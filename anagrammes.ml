@@ -355,17 +355,19 @@ let () =
 
     (* On récupère enfin l'ensemble des anagrammes du nom choisi par l'utilisateur sous le forme de clé/valeur avec la clé
        un prénom et la valeur un nom de famille plausible obtenue en réarangeant le reste des lettres non présentes dans le prénom *)
-    let correct_names = generate_correct_names correct_first_names markov_chain in
-    
+    let correct_names = generate_correct_names correct_first_names markov_chain in 
+
+    (* On affiche dans la console la liste des anagrammes du nom trouvés par le programme et on exporte les résultats dans un fichier .dat *)
+    Printf.printf "\n\nVoici une liste de noms plausibles qui sont anagrammes de '%s' (%d résultat(s)) :\n\n" name (Hashtbl.length correct_names);
+    Hashtbl.iter (fun key value -> (
+        Printf.printf "%s %s\n" key value
+        )) correct_names;
+
     (* On arrête le chronomètre sur le temps d'exécution du programme *)
     let t2 = Unix.gettimeofday () in
-    
+
     (* et on calcule son temps d'exécution total *)
     let execution_time = t2 -. t1 in
-    
-    (* On affiche la liste des anagrammes du nom trouvés par le programme *)
-    Printf.printf "\n\nVoici une liste de noms plausibles qui sont anagrammes de '%s' (%d résultat(s)) :\n\n" name (Hashtbl.length correct_names);
-    Hashtbl.iter (fun key value -> Printf.printf "%s %s\n" key value) correct_names;
     
     (* Et on affiche le temps d'exécution du programme *)
     Printf.printf "\nTemps d'exécution du programme: %.3f secondes\n" execution_time;;
