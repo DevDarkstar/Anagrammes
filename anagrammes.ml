@@ -31,7 +31,7 @@ let get_first_names filename =
 let count_occurrences_letters word = 
     let word_length = String.length word in
     let tab_occurrences = Array.make 26 0 in
-    let rec count_occurrences_letters i = 
+    let rec count_occurrences_letters_aux i = 
         if i < word_length then(
             (* On transforme chaque caractère de la chaine en majuscule de sorte à avoir une uniformité de la casse *)
             let c = Char.uppercase_ascii word.[i] in
@@ -40,13 +40,13 @@ let count_occurrences_letters word =
                -> A = 0, B = 1, .., Z = 25 *)
             | 'A' .. 'Z' -> 
             tab_occurrences.(Char.code c - Char.code 'A') <- tab_occurrences.(Char.code c - Char.code 'A') + 1;
-            count_occurrences_letters (i + 1)
+            count_occurrences_letters_aux (i + 1)
             (* On ignore tout autre type de caractère *)
-            | _ -> count_occurrences_letters (i + 1)
+            | _ -> count_occurrences_letters_aux (i + 1)
         )
         else tab_occurrences
     in
-    count_occurrences_letters 0;;
+    count_occurrences_letters_aux 0;;
 
 
 (* Fonction permettant de compter le nombre le nombre d'occurrences de chaque lettre pour chaque mot contenus dans une liste.
@@ -309,7 +309,7 @@ let generate_correct_names names markov_chain =
                 (* On récupère l'indice de la lettre qui a la plus grande probabilité de suivre la dernière lettre qui a été ajoutée au nom *)
                 let next_letter_index = find_next_letter 0 0 0 in
                 (* et on ajoute la lettre correspondant à cet indice à la suite de l'accumulateur acc tout en la supprimant des lettres restant à ajouter au nom *)
-                (* puis on effectue après cela une récurrence pour déterminer la suite du nom de famille *)
+                (* puis on effectue après cela une récursivité pour déterminer la suite du nom de famille *)
                 create_name (acc ^ (Char.escaped letters.[next_letter_index])) ((String.sub letters 0 next_letter_index) ^ (String.sub letters (next_letter_index + 1) (letters_length - next_letter_index - 1)))
             )
             (* On ajoute à la table de hashage le nom corrigé associé au prénom contenu dans 'key' et qui correspond à la concaténation de l'accumulateur contenant les lettres du nom ajoutés au fur et à mesure
