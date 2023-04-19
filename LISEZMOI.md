@@ -10,11 +10,11 @@ entrer votre nom en utilisant des minuscules, des majuscules ou les deux.
 
 Le programme est livré avec un fichier Makefile.
 
-**Compilation**
+**Compilation**<br>
 make all
 
-**Exécution**
+**Exécution**<br>
 ./anagrammes
 
-**Netoyage de l'archive des fichiers de compilation**
+**Netoyage de l'archive des fichiers de compilation**<br>
 make clean
