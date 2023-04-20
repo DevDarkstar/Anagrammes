@@ -21,4 +21,4 @@ anagrammesx: anagrammes.ml
 ################# clean up
 clean:
 	rm -f $(EXECUTABLES)
-	rm -f *.cm[iox] *.o *.cma *.cmxa *.a *.cmi *.cmx
+	rm -f *.cm[iox] *.o *.cma *.cmxa *.a *.cmi *.cmx *.dat

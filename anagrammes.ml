@@ -246,6 +246,62 @@ let generate_markov_chain l =
         in
         generate_markov_chain_aux l;;
 
+let choose_first_letter remaining_letters markov_chain = 
+    let letters_length = String.length remaining_letters in
+    (* On fixe la seconde valeur à un nombre très élevé *)
+    let rec choose_letters_aux i index mean_min =
+        if i < letters_length then(
+            (* On récupère la lettres dans les lettres restantes à l'indice i *)
+            let letter = remaining_letters.[i] in
+            (* On crée un tableau temporaire dans lequel on retire cette lettre *)
+            let remaining_letters_aux = (String.sub remaining_letters 0 i) ^ (String.sub remaining_letters (i + 1) (letters_length - i - 1)) in
+            let remaining_letters_aux_length = String.length remaining_letters_aux in
+            let rec sum_occurrences acc j = 
+                if j < remaining_letters_aux_length then(
+                    let key = (Char.escaped letter) ^ (Char.escaped remaining_letters_aux.[j]) in
+                    let number_occurrences = Hashtbl.find markov_chain key in
+                    sum_occurrences (acc + number_occurrences) (j + 1)
+                )
+                else acc
+                in
+                let sum = float_of_int (sum_occurrences 0 0) in
+                let mean = sum /. float_of_int remaining_letters_aux_length in
+                if mean < mean_min then choose_letters_aux (i + 1) i mean
+                else choose_letters_aux (i + 1) index mean_min              
+        )else index
+        in 
+        choose_letters_aux 0 0 10000.0;;
+
+let choose_last_letter remaining_letters markov_chain = 
+    let letters_length = String.length remaining_letters in
+    (* On fixe la seconde valeur à un nombre très élevé *)
+    let rec choose_letters_aux i index mean_max =
+        if i < letters_length then(
+            (* On récupère la lettres dans les lettres restantes à l'indice i *)
+            let letter = remaining_letters.[i] in
+            (* On crée un tableau temporaire dans lequel on retire cette lettre *)
+            let remaining_letters_aux = (String.sub remaining_letters 0 i) ^ (String.sub remaining_letters (i + 1) (letters_length - i - 1)) in
+            let remaining_letters_aux_length = String.length remaining_letters_aux in
+            let rec sum_occurrences acc j = 
+                if j < remaining_letters_aux_length then(
+                    let key = (Char.escaped letter) ^ (Char.escaped remaining_letters_aux.[j]) in
+                    let number_occurrences = Hashtbl.find markov_chain key in
+                    sum_occurrences (acc + number_occurrences) (j + 1)
+                )
+                else acc
+                in
+                let sum = float_of_int (sum_occurrences 0 0) in
+                let mean = sum /. float_of_int remaining_letters_aux_length in
+                if mean > mean_max then choose_letters_aux (i + 1) i mean
+                else choose_letters_aux (i + 1) index mean_max             
+        )else index
+        in 
+        choose_letters_aux 0 0 0.0;;
+
+
+
+
+
 (* Permet de retourner une table de hashage contenant un couple clé valeur avec comme clé un prénom et comme valeur un nom de famille plausible obtenu par le réarrangement des lettres de ce dernier 
    grâce à une chaine de Markov.
    param: names -> table de hashage contenant pour chaque couple clé/valeur un prénom comme clé et une liste de lettres à réarranger grâce à cette fonction afin de former un nom de famille plausible
@@ -261,7 +317,9 @@ let generate_correct_names names markov_chain =
     Hashtbl.iter (fun key value -> (
         let word_length = String.length value in
         (* on sélectionne un indice aléatoire parmi les lettres du nom à former qui servira de première lettre du nom de famille *)
-        let index_first_letter = Random.int word_length in
+        (*let index_first_letter = Random.int word_length in*)
+        let index_first_letter = choose_first_letter value markov_chain in
+        Printf.printf "%d\n" index_first_letter;
         (* On récupère le caractère associé à cet indice *)
         let first_letter = value.[index_first_letter] in
         (* On l'ajoute au début du nom que l'on souhaite former *)
@@ -271,11 +329,12 @@ let generate_correct_names names markov_chain =
         (* On récupère la taille des lettres restantes pour former le nom de famille *)
         let remaining_letters_one_length = String.length remaining_letters_one in
         (* on sélectionne un indice aléatoire parmi les lettres restantes qui servira de dernière lettre du nom de famille *)
-        let index_last_letter = Random.int remaining_letters_one_length in
+        (*let index_last_letter = Random.int remaining_letters_one_length in*)
+        let index_last_letter = choose_last_letter remaining_letters_one markov_chain in
         (* On récupère le caractère associé à cet indice *)
         let last_letter = remaining_letters_one.[index_last_letter] in
         (* et on la retire de la liste des lettres restantes *)
-        let remaining_letters_two = (String.sub remaining_letters_one 0 index_last_letter) ^ (String.sub remaining_letters_one (index_last_letter + 1) (remaining_letters_one_length - index_last_letter - 1)) in
+        let remaining_letters_two = (String.sub remaining_letters_one 0 index_last_letter) ^ (String.sub remaining_letters_one (index_last_letter + 1) (remaining_letters_one_length - index_last_letter- 1)) in
         let rec create_name acc letters = 
             let letters_length = String.length letters in
             if letters_length > 1 then(
@@ -326,8 +385,6 @@ let generate_correct_names names markov_chain =
 
 (* Bloc principal du programme *)
 let () =
-    (* On initialise la génération de nombre pseudo aléatoires *)
-    Random.self_init () in
 
     (* On demande à l'utilisateur d'entrer le nom à partir duquel il souhaite déterminer les anagrammes *)
     print_string "Entrez un nom à partir duquel vous souhaitez déterminer les anagrammes: ";
@@ -355,12 +412,18 @@ let () =
 
     (* On récupère enfin l'ensemble des anagrammes du nom choisi par l'utilisateur sous le forme de clé/valeur avec la clé
        un prénom et la valeur un nom de famille plausible obtenue en réarangeant le reste des lettres non présentes dans le prénom *)
-    let correct_names = generate_correct_names correct_first_names markov_chain in 
+    let correct_names = generate_correct_names correct_first_names markov_chain in
+    
+    (* Créatio nd'un fichier de sortie au format .dat qui contiendra les résultats du programme *)
+    let filename = name ^ "_anagrammes.dat" in
+    let output_file = open_out filename in
 
     (* On affiche dans la console la liste des anagrammes du nom trouvés par le programme et on exporte les résultats dans un fichier .dat *)
     Printf.printf "\n\nVoici une liste de noms plausibles qui sont anagrammes de '%s' (%d résultat(s)) :\n\n" name (Hashtbl.length correct_names);
+    Printf.fprintf output_file "Voici une liste de noms plausibles qui sont anagrammes de '%s' (%d résultat(s)) :\n\n" name (Hashtbl.length correct_names);
     Hashtbl.iter (fun key value -> (
-        Printf.printf "%s %s\n" key value
+        Printf.printf "%s %s\n" key value;
+        Printf.fprintf output_file "%s %s\n" key value
         )) correct_names;
 
     (* On arrête le chronomètre sur le temps d'exécution du programme *)
@@ -370,4 +433,6 @@ let () =
     let execution_time = t2 -. t1 in
     
     (* Et on affiche le temps d'exécution du programme *)
-    Printf.printf "\nTemps d'exécution du programme: %.3f secondes\n" execution_time;;
+    Printf.printf "\nTemps d'exécution du programme: %.3f secondes\n" execution_time;
+    Printf.fprintf output_file "\nTemps d'exécution du programme: %.3f secondes\n" execution_time;
+    close_out output_file;;

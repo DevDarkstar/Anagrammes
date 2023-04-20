@@ -8,6 +8,8 @@ Evitez d'utiliser des caractères accentués car ces derniers ne seront pas
 pris en compte dans la génération d'anagrammes. Vous pouvez en revanche 
 entrer votre nom en utilisant des minuscules, des majuscules ou les deux.
 
+Attention: le nettoyage de l'archive supprime également les fichiers de sortie .dat donc pensez à archiver les résultats que vous souhaitez conserver.
+
 Le programme est livré avec un fichier Makefile.
 
 **Compilation**<br>
