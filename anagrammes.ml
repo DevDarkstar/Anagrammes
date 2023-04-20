@@ -258,7 +258,7 @@ let choose_first_letter remaining_letters markov_chain =
             let remaining_letters_aux_length = String.length remaining_letters_aux in
             let rec sum_occurrences acc j = 
                 if j < remaining_letters_aux_length then(
-                    let key = (Char.escaped letter) ^ (Char.escaped remaining_letters_aux.[j]) in
+                    let key = (Char.escaped remaining_letters_aux.[j]) ^ (Char.escaped letter) in
                     let number_occurrences = Hashtbl.find markov_chain key in
                     sum_occurrences (acc + number_occurrences) (j + 1)
                 )
@@ -284,7 +284,7 @@ let choose_last_letter remaining_letters markov_chain =
             let remaining_letters_aux_length = String.length remaining_letters_aux in
             let rec sum_occurrences acc j = 
                 if j < remaining_letters_aux_length then(
-                    let key = (Char.escaped letter) ^ (Char.escaped remaining_letters_aux.[j]) in
+                    let key = (Char.escaped remaining_letters_aux.[j]) ^ (Char.escaped letter) in
                     let number_occurrences = Hashtbl.find markov_chain key in
                     sum_occurrences (acc + number_occurrences) (j + 1)
                 )
@@ -319,7 +319,6 @@ let generate_correct_names names markov_chain =
         (* on sélectionne un indice aléatoire parmi les lettres du nom à former qui servira de première lettre du nom de famille *)
         (*let index_first_letter = Random.int word_length in*)
         let index_first_letter = choose_first_letter value markov_chain in
-        Printf.printf "%d\n" index_first_letter;
         (* On récupère le caractère associé à cet indice *)
         let first_letter = value.[index_first_letter] in
         (* On l'ajoute au début du nom que l'on souhaite former *)
