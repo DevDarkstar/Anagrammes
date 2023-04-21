@@ -213,9 +213,9 @@ let create_markov_chain value =
                 create_markov_chain_aux_two 0;
             create_markov_chain_aux_one (i + 1)
         )
-        in 
-        create_markov_chain_aux_one 0;
-        markov_chain;;
+        else markov_chain 
+    in 
+    create_markov_chain_aux_one 0;;
 
 (*
     Permet de remplir une chaine de Markov à partir d'une liste de données.
