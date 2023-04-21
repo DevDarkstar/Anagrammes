@@ -96,7 +96,6 @@ let compare_words first_name name =
 
     signature: val occurrences_table_to_string : int array -> string = <fun>
 *)
-
 let occurrences_table_to_string tab =
     let length = Array.length tab in
     let rec occurrences_table_to_string_aux acc i = 
@@ -147,7 +146,7 @@ let count_vowels word =
 (*
    Permet d'indiquer si un mot est viable ou non. Un mot est viable, c'est-à-dire éligible pour l'analyse par la chaine de Markov
    si le nombre de voyelles et le nombre de consonnes du mot sont équivalents à plus ou moins une différence près et si la taille 
-   du mot dépasse une longueur de 2.
+   du mot est strictement supérieure à 1.
    param: word -> Le mot à analyser.
    return: true si le mot est viable false sinon.
 
@@ -157,7 +156,7 @@ let is_viable_word word =
     let word_length = String.length word in
     let number_vowels = count_vowels word in
     let number_consonants = word_length - number_vowels in
-    if (number_vowels >= number_consonants && number_vowels <= number_consonants + 1) && word_length > 2 then true
+    if (number_vowels >= number_consonants && number_vowels <= number_consonants + 1) && word_length > 1 then true
     else false;;
    
 (*
@@ -190,6 +189,7 @@ let find_first_names h name =
         )
     ) h;
     res;;
+
 (*
     Permet de créer une chaine de Markov contenant l'ensemble des occurrences de deux lettres successives
     param: value -> valeur d'initialisation de chaque clé de la chaine de Markov
@@ -246,6 +246,14 @@ let generate_markov_chain l =
         in
         generate_markov_chain_aux l;;
 
+(* 
+    Permet de choisir la première lettre du patronyme de l'anagramme plausible du nom choisi par l'utilisateur.
+    param: remaining_letters -> chaîne de caractères contenant l'ensemble des lettres parmi lesquelles choisir la première lettre du patronyme
+    param: markov_chain -> chaîne de Markov permettant d'aider à choisir cette lettre
+    return: l'indice de la position de la lettre choisie dans remaining_letters
+
+    signature: val choose_first_letter string -> (string, int) Hashtbl.t -> int = <fun>
+*)
 let choose_first_letter remaining_letters markov_chain = 
     let letters_length = String.length remaining_letters in
     (* On fixe la seconde valeur à un nombre très élevé *)
@@ -255,23 +263,46 @@ let choose_first_letter remaining_letters markov_chain =
             let letter = remaining_letters.[i] in
             (* On crée un tableau temporaire dans lequel on retire cette lettre *)
             let remaining_letters_aux = (String.sub remaining_letters 0 i) ^ (String.sub remaining_letters (i + 1) (letters_length - i - 1)) in
+            (* On récupère la taille de la liste de lettres restantes *)
             let remaining_letters_aux_length = String.length remaining_letters_aux in
+            (* 
+                Permet de sommer l'ensemble des valeurs d'occurrences associées aux clés dans la chaîne de Markov où la lettre 'letter' suit l'ensemble des lettres contenues dans 'remaining_letters_aux'.
+                param: acc -> accumulateur qui va contenir au fur et à mesure du parcours de 'remainig_letters_aux' la somme des valeurs d'occurrences
+                param: j -> compteur allant de 0 à la taille de 'remaining_letters_aux' - 1
+                return: la somme des valeurs d'occurrences, c'est-à-dire la valeur de acc
+                
+                signature: val sum_occurrences : int -> int -> int = <fun>
+            *)
             let rec sum_occurrences acc j = 
                 if j < remaining_letters_aux_length then(
                     let key = (Char.escaped remaining_letters_aux.[j]) ^ (Char.escaped letter) in
+                    (* On récupère la valeur associée à la clé dans la chaîne de Markov *)
                     let number_occurrences = Hashtbl.find markov_chain key in
+                    (* et on appelle récursivement la fonction en ajoutant la valeur récupérée à l'accumulateur *)
                     sum_occurrences (acc + number_occurrences) (j + 1)
                 )
                 else acc
                 in
+                (* On caste la somme retournée par la fonction 'sum_occurrences' en float afin de faire la moyenne *)
                 let sum = float_of_int (sum_occurrences 0 0) in
                 let mean = sum /. float_of_int remaining_letters_aux_length in
+                (* Si la moyenne est plus petite que la plus petite moyenne actuellement contenue dans 'mean_min' 
+                   alors, on garde en mémoire la valeur de l'indice de cette lettre dans 'remaining_letters' 
+                   ainsi que la nouvelle valeur de la moyenne en nous passons à l'occurrence suivante. *)
                 if mean < mean_min then choose_letters_aux (i + 1) i mean
                 else choose_letters_aux (i + 1) index mean_min              
         )else index
         in 
         choose_letters_aux 0 0 10000.0;;
 
+(* 
+    Permet de choisir la dernière lettre du patronyme de l'anagramme plausible du nom choisi par l'utilisateur.
+    param: remaining_letters -> chaîne de caractères contenant l'ensemble des lettres parmi lesquelles choisir la première lettre du patronyme
+    param: markov_chain -> chaîne de Markov permettant d'aider à choisir cette lettre
+    return: l'indice de la position de la lettre choisie dans remaining_letters
+
+    signature: val choose_last_letter string -> (string, int) Hashtbl.t -> int = <fun>
+*)
 let choose_last_letter remaining_letters markov_chain = 
     let letters_length = String.length remaining_letters in
     (* On fixe la seconde valeur à un nombre très élevé *)
@@ -281,26 +312,37 @@ let choose_last_letter remaining_letters markov_chain =
             let letter = remaining_letters.[i] in
             (* On crée un tableau temporaire dans lequel on retire cette lettre *)
             let remaining_letters_aux = (String.sub remaining_letters 0 i) ^ (String.sub remaining_letters (i + 1) (letters_length - i - 1)) in
+            (* On récupère la taille de la liste de lettres restantes *)
             let remaining_letters_aux_length = String.length remaining_letters_aux in
+            (* 
+                Permet de sommer l'ensemble des valeurs d'occurrences associées aux clés dans la chaîne de Markov où la lettre 'letter' suit l'ensemble des lettres contenues dans 'remaining_letters_aux'.
+                param: acc -> accumulateur qui va contenir au fur et à mesure du parcours de 'remainig_letters_aux' la somme des valeurs d'occurrences
+                param: j -> compteur allant de 0 à la taille de 'remaining_letters_aux' - 1
+                return: la somme des valeurs d'occurrences, c'est-à-dire la valeur de acc
+                
+                signature: val sum_occurrences : int -> int -> int = <fun>
+            *)
             let rec sum_occurrences acc j = 
                 if j < remaining_letters_aux_length then(
                     let key = (Char.escaped remaining_letters_aux.[j]) ^ (Char.escaped letter) in
+                    (* On récupère la valeur associée à la clé dans la chaîne de Markov *)
                     let number_occurrences = Hashtbl.find markov_chain key in
+                    (* et on appelle récursivement la fonction en ajoutant la valeur récupérée à l'accumulateur *)
                     sum_occurrences (acc + number_occurrences) (j + 1)
                 )
                 else acc
                 in
+                (* On caste la somme retournée par la fonction 'sum_occurrences' en float afin de faire la moyenne *)
                 let sum = float_of_int (sum_occurrences 0 0) in
                 let mean = sum /. float_of_int remaining_letters_aux_length in
+                (* Si la moyenne est plus grande que la plus grande moyenne actuellement contenue dans 'mean_max' 
+                   alors, on garde en mémoire la valeur de l'indice de cette lettre dans 'remaining_letters' 
+                   ainsi que la nouvelle valeur de la moyenne en nous passons à l'occurrence suivante. *)
                 if mean > mean_max then choose_letters_aux (i + 1) i mean
                 else choose_letters_aux (i + 1) index mean_max             
         )else index
         in 
         choose_letters_aux 0 0 0.0;;
-
-
-
-
 
 (* Permet de retourner une table de hashage contenant un couple clé valeur avec comme clé un prénom et comme valeur un nom de famille plausible obtenu par le réarrangement des lettres de ce dernier 
    grâce à une chaine de Markov.
@@ -310,14 +352,12 @@ let choose_last_letter remaining_letters markov_chain =
         
    signature: val generate_correct_names : (string, string) Hashtbl.t -> (string, int) Hashtbl.t -> (string, string) Hashtbl.t = <fun>
 *)
-
 let generate_correct_names names markov_chain = 
     let names_length = Hashtbl.length names in
     let names_res = Hashtbl.create names_length in
     Hashtbl.iter (fun key value -> (
         let word_length = String.length value in
-        (* on sélectionne un indice aléatoire parmi les lettres du nom à former qui servira de première lettre du nom de famille *)
-        (*let index_first_letter = Random.int word_length in*)
+        (* on sélectionne l'indice parmi les lettres du nom à former qui servira de première lettre du nom de famille *)
         let index_first_letter = choose_first_letter value markov_chain in
         (* On récupère le caractère associé à cet indice *)
         let first_letter = value.[index_first_letter] in
@@ -327,8 +367,7 @@ let generate_correct_names names markov_chain =
         let remaining_letters_one = (String.sub value 0 index_first_letter) ^ (String.sub value (index_first_letter + 1) (word_length - index_first_letter - 1)) in
         (* On récupère la taille des lettres restantes pour former le nom de famille *)
         let remaining_letters_one_length = String.length remaining_letters_one in
-        (* on sélectionne un indice aléatoire parmi les lettres restantes qui servira de dernière lettre du nom de famille *)
-        (*let index_last_letter = Random.int remaining_letters_one_length in*)
+        (* on sélectionne l'indice parmi les lettres restantes qui servira de dernière lettre du nom de famille *)
         let index_last_letter = choose_last_letter remaining_letters_one markov_chain in
         (* On récupère le caractère associé à cet indice *)
         let last_letter = remaining_letters_one.[index_last_letter] in
@@ -379,8 +418,6 @@ let generate_correct_names names markov_chain =
 
     )) names;
     names_res;;
-
-        
 
 (* Bloc principal du programme *)
 let () =
@@ -434,4 +471,5 @@ let () =
     (* Et on affiche le temps d'exécution du programme *)
     Printf.printf "\nTemps d'exécution du programme: %.3f secondes\n" execution_time;
     Printf.fprintf output_file "\nTemps d'exécution du programme: %.3f secondes\n" execution_time;
+    (* et on ferme le fichier d'exportation des résultats *)
     close_out output_file;;
